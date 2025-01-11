@@ -23,42 +23,27 @@ def connect_to_db():
 @app.route('/customer', methods=['POST'])
 def create_customer():
     data = request.json
-    conn = connect_to_db()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber) VALUES (%s, %s, %s, %s)",
-            (data['FirstName'], data['LastName'], data['Email'], data['PhoneNumber'])
-        )
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"message": "Customer created successfully!"}), 201
-    return jsonify({"message": "Failed to connect to database"}), 500
 
-# Endpoint para obtener información de un cliente
-@app.route('/customer/<int:customer_id>', methods=['GET'])
-def get_customer(customer_id):
+    # Validación de los datos recibidos
+    if not all(key in data for key in ('FirstName', 'LastName', 'Email', 'PhoneNumber')):
+        return jsonify({"message": "Missing required fields"}), 400
+
     conn = connect_to_db()
     if conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Customers WHERE CustomerID = %s", (customer_id,))
-        customer = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if customer:
-            return jsonify({
-                "CustomerID": customer[0],
-                "FirstName": customer[1],
-                "LastName": customer[2],
-                "Email": customer[3],
-                "PhoneNumber": customer[4],
-                "Address": customer[5],
-                "CreatedAt": customer[6],
-                "UpdatedAt": customer[7]
-            })
-        else:
-            return jsonify({"message": "Customer not found"}), 404
+        try:
+            cursor.execute(
+                "INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber) VALUES (%s, %s, %s, %s)",
+                (data['FirstName'], data['LastName'], data['Email'], data['PhoneNumber'])
+            )
+            conn.commit()
+            return jsonify({"message": "Customer created successfully!"}), 201
+        except Error as e:
+            return jsonify({"message": f"Failed to insert customer: {e}"}), 500
+        finally:
+            cursor.close()
+            conn.close()
+
     return jsonify({"message": "Failed to connect to database"}), 500
 
 # Iniciar la aplicación
